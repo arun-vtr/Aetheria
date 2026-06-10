@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react';
 
 function TrackCard({ track, index }) {
+  const [prevImage, setPrevImage] = useState(track.image);
   const [coverUrl, setCoverUrl] = useState(track.image || null);
 
+  if (track.image !== prevImage) {
+    setPrevImage(track.image);
+    setCoverUrl(track.image || null);
+  }
+
   useEffect(() => {
-    // If track already has an image from Last.fm, use it immediately
+    // If track already has an image from Last.fm, do not fetch
     if (track.image) {
-      setCoverUrl(track.image);
       return;
     }
 
@@ -22,7 +27,7 @@ function TrackCard({ track, index }) {
           const highRes = data.results[0].artworkUrl100?.replace('100x100bb', '300x300bb') || data.results[0].artworkUrl100;
           setCoverUrl(highRes);
         }
-      } catch (err) {
+      } catch {
         console.warn('Cover art fetch failed for:', track.name);
       }
     };

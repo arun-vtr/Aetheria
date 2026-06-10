@@ -72,7 +72,7 @@ export default function App() {
   }, [lastFmKey]);
 
   // Retrieve weather and tracks for a city search
-  const handleSearch = async (city) => {
+  const handleSearch = useCallback(async (city) => {
     setIsSearching(true);
     try {
       const weatherData = await fetchWeatherByCity(city);
@@ -91,14 +91,13 @@ export default function App() {
     } finally {
       setIsSearching(false);
     }
-  };
+  }, [loadMusic]);
 
   // Retrieve weather and tracks via user's current GPS location
   const handleLocate = useCallback(async () => {
     if (!navigator.geolocation) {
       alert('Geolocation is not supported by your browser.');
-      // Fallback
-      handleSearch('London');
+      handleSearch('New Delhi');
       return;
     }
 
@@ -109,13 +108,21 @@ export default function App() {
           const { latitude, longitude } = position.coords;
           
           // Fetch weather and reverse-geocode place name in parallel
-          const [weatherData, placeName] = await Promise.all([
+          const [weatherData, placeDetails] = await Promise.all([
             fetchWeatherByCoords(latitude, longitude),
             fetchPlaceName(latitude, longitude)
           ]);
 
-          if (placeName) {
-            weatherData.city = placeName;
+          if (placeDetails) {
+            // Check if coordinates resolve to India
+            if (placeDetails.countryCode !== 'IN') {
+              alert('Aetheria is focused on India. Loading New Delhi as fallback.');
+              handleSearch('New Delhi');
+              return;
+            }
+            weatherData.city = placeDetails.city || placeDetails.locality || 'My Location';
+            weatherData.state = placeDetails.state || '';
+            weatherData.country = 'IN';
           }
           
           setWeather(weatherData);
@@ -130,26 +137,26 @@ export default function App() {
           await loadMusic(calculatedMood);
         } catch (err) {
           console.error(err);
-          alert('Failed to get weather for your location. Loading London as fallback.');
-          handleSearch('London');
+          alert('Failed to get weather for your location. Loading New Delhi as fallback.');
+          handleSearch('New Delhi');
         } finally {
           setIsLocating(false);
         }
       },
       (error) => {
         console.warn('Geolocation blocked or failed:', error.message);
-        // Fallback on block/denial
-        handleSearch('London');
+        handleSearch('New Delhi');
         setIsLocating(false);
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
-  }, [loadMusic]);
+  }, [loadMusic, handleSearch]);
 
-  // Initial load: Attempt GPS lookup, fallback to London
+  // Initial load: Attempt GPS lookup, fallback to India
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     handleLocate();
-  }, []); // Run once on mount
+  }, [handleLocate]); // Run once on mount
 
   return (
     <div className="app-content-wrapper">

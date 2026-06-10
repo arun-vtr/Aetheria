@@ -319,14 +319,26 @@ body.theme-tropical {
 /* Weather & Mood Container Layout */
 .weather-section-wrap {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: 1.2fr 1.1fr 1.1fr;
   gap: 24px;
   margin-bottom: 48px;
+}
+
+@media (max-width: 1024px) {
+  .weather-section-wrap {
+    grid-template-columns: 1.2fr 1fr;
+  }
+  .local-updates-card {
+    grid-column: span 2;
+  }
 }
 
 @media (max-width: 768px) {
   .weather-section-wrap {
     grid-template-columns: 1fr;
+  }
+  .local-updates-card {
+    grid-column: span 1;
   }
   .hero-title {
     font-size: 2.6rem;
@@ -851,4 +863,209 @@ body.theme-tropical {
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   Local Area Updates & AQI Card Styles
+   ============================================================ */
+
+.local-updates-card {
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.local-updates-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.local-updates-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.local-updates-title-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.local-updates-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+}
+
+.local-updates-name {
+  font-family: var(--font-title);
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-top: 1px;
+}
+
+/* AQI Panel */
+.aqi-panel {
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.aqi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.aqi-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.aqi-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--radius-round);
+  border: 1px solid transparent;
+}
+
+.aqi-metrics-row {
+  display: flex;
+  gap: 16px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.aqi-metric strong {
+  color: var(--text-primary);
+}
+
+/* Advisory Box */
+.advisory-box {
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  border: 1px solid transparent;
+}
+
+.advisory-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  margin-bottom: 4px;
+}
+
+.advisory-icon {
+  font-size: 0.95rem;
+}
+
+.advisory-text {
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+/* Advisory Alerts */
+.advisory-success {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: rgba(16, 185, 129, 0.15);
+  color: #a7f3d0;
+}
+
+.advisory-info {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: rgba(59, 130, 246, 0.15);
+  color: #bfdbfe;
+}
+
+.advisory-warning {
+  background: rgba(245, 158, 11, 0.05);
+  border-color: rgba(245, 158, 11, 0.15);
+  color: #fef3c7;
+}
+
+.advisory-danger {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.18);
+  color: #fecaca;
+  animation: pulse-border 2s infinite ease-in-out;
+}
+
+@keyframes pulse-border {
+  0% { border-color: rgba(239, 68, 68, 0.18); }
+  50% { border-color: rgba(239, 68, 68, 0.45); }
+  100% { border-color: rgba(239, 68, 68, 0.18); }
+}
+
+/* Hourly Timeline */
+.hourly-forecast-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hourly-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.hourly-timeline {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+/* Style scrollbar for timeline */
+.hourly-timeline::-webkit-scrollbar {
+  height: 3px;
+}
+
+.hourly-timeline::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.hourly-timeline::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-round);
+}
+
+.hourly-item {
+  flex: 1;
+  min-width: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.hourly-time {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.hourly-emoji {
+  font-size: 1.1rem;
+  margin: 3px 0;
+}
+
+.hourly-temp {
+  font-size: 0.72rem;
+  font-weight: 600;
 }

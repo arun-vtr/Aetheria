@@ -194,21 +194,20 @@ export default function ParticleCanvas({ theme }) {
     // Initialize Particles
     const initParticles = () => {
       particles = [];
-      let count = 40;
       if (theme === 'rainy' || theme === 'stormy') {
-        count = theme === 'stormy' ? 90 : 60;
+        const count = theme === 'stormy' ? 90 : 60;
         for (let i = 0; i < count; i++) particles.push(new RainDrop());
       } else if (theme === 'snowy') {
-        count = 50;
+        const count = 50;
         for (let i = 0; i < count; i++) particles.push(new SnowFlake());
       } else if (theme === 'sunny' || theme === 'tropical') {
-        count = 30;
+        const count = 30;
         for (let i = 0; i < count; i++) particles.push(new LightSpark());
       } else if (theme === 'cloudy' || theme === 'misty') {
-        count = 6;
+        const count = 6;
         for (let i = 0; i < count; i++) particles.push(new CloudBlob());
       } else if (theme === 'cold') {
-        count = 20;
+        const count = 20;
         for (let i = 0; i < count; i++) particles.push(new WindStreak());
       }
     };

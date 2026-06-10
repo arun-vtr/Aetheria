@@ -58,7 +58,7 @@ export default function SearchHero({
           Music for <span className="title-gradient">Your Weather</span>
         </h1>
         <p className="hero-subtitle">
-          Discover tracks that perfectly match the sky above you
+          Discover tracks matching the sky above you • Focused on Indian Regions
         </p>
 
         <form className="search-form" onSubmit={handleSubmit}>
@@ -69,7 +69,7 @@ export default function SearchHero({
               id="city-input"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Enter a city name..."
+              placeholder="Enter a city or area in India..."
               disabled={isSearching || isLocating}
             />
             <button
@@ -99,8 +99,8 @@ export default function SearchHero({
             { name: 'Kochi', icon: '🌴' },
             { name: 'Mumbai', icon: '🌆' },
             { name: 'Delhi', icon: '🏙️' },
-            { name: 'London', icon: '🌧️' },
-            { name: 'Dubai', icon: '☀️' }
+            { name: 'Bengaluru', icon: '💻' },
+            { name: 'Chennai', icon: '🏖️' }
           ].map((city) => (
             <button
               key={city.name}

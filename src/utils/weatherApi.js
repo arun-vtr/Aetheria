@@ -52,50 +52,81 @@ export function getMoodKey(owmCode, tempC, humidity = 0) {
   return 'sunny';
 }
 
-// Fetch City coordinates via Open-Meteo Geocoding API
+// Fetch City coordinates using Nominatim (OSM) — supports small towns, villages, localities
 export async function fetchWeatherByCity(city) {
-  const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=10&language=en&format=json`;
-  const geoRes = await fetch(geoUrl);
+  const cleanCity = city.trim();
+
+  // Use Nominatim search — it knows even small Indian villages
+  const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanCity)}&format=json&limit=10&addressdetails=1&countrycodes=in`;
+  
+  const geoRes = await fetch(nominatimUrl, {
+    headers: { 'User-Agent': 'AetheriaApp/1.0' }
+  });
   if (!geoRes.ok) {
     throw new Error('Geocoding service unavailable');
   }
   const geoData = await geoRes.json();
-  if (!geoData.results || geoData.results.length === 0) {
-    throw new Error(`City "${city}" not found`);
+
+  if (!geoData || geoData.length === 0) {
+    throw new Error(`"${cleanCity}" was not found. Try a nearby town or check spelling.`);
   }
 
-  // Prioritize Indian results ('IN') to resolve Kochi bias
-  let match = geoData.results.find(
-    (item) => item.country_code === 'IN' || (item.country && item.country.toLowerCase() === 'india')
-  );
-  if (!match) {
-    match = geoData.results[0];
-  }
+  // Pick the most relevant result (highest importance)
+  const match = geoData[0];
+  const latitude = parseFloat(match.lat);
+  const longitude = parseFloat(match.lon);
 
-  const { latitude, longitude, name, country, country_code } = match;
-  
+  // Extract place name from address details
+  const addr = match.address || {};
+  const placeName =
+    addr.town ||
+    addr.city ||
+    addr.village ||
+    addr.suburb ||
+    addr.county ||
+    match.name ||
+    cleanCity;
+  const state = addr.state || '';
+
   // Fetch weather forecast details
   const weather = await fetchWeatherByCoords(latitude, longitude);
-  
-  // Overwrite name with geocoded city name and country code
+
   return {
     ...weather,
-    city: name,
-    country: country_code || country || ''
+    city: placeName,
+    state,
+    country: 'IN'
   };
 }
 
-// Fetch Forecast via Open-Meteo Forecast API
+// Fetch Forecast via Open-Meteo Forecast API with Hourly forecast & Air Quality
 export async function fetchWeatherByCoords(lat, lon) {
-  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m`;
-  const res = await fetch(forecastUrl);
-  if (!res.ok) {
+  // Request times in IST (Asia/Kolkata, UTC+5:30) so hourly timestamps are already local
+  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&forecast_days=2&timezone=Asia%2FKolkata`;
+  const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi,pm2_5,pm10`;
+  
+  const [forecastRes, aqiRes] = await Promise.all([
+    fetch(forecastUrl),
+    fetch(aqiUrl).catch(() => null)
+  ]);
+
+  if (!forecastRes.ok) {
     throw new Error('Weather service unavailable');
   }
-  const data = await res.json();
-  const current = data.current;
+
+  const forecastData = await forecastRes.json();
+  const current = forecastData.current;
   if (!current) {
     throw new Error('Failed to parse weather metrics');
+  }
+
+  let aqiData = null;
+  if (aqiRes && aqiRes.ok) {
+    try {
+      aqiData = await aqiRes.json();
+    } catch (e) {
+      console.warn('AQI parsing failed:', e);
+    }
   }
 
   const owmCode = wmoToOwmCode(current.weather_code);
@@ -104,12 +135,41 @@ export async function fetchWeatherByCoords(lat, lon) {
   const windSpeed = current.wind_speed_10m;
   const feelsLike = current.apparent_temperature;
 
-  // Derive weather description
+  // Find the current IST hour in the hourly array
+  // API timestamps are already in IST (e.g. "2026-06-10T10:00") — parse HH directly
+  const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const currentISTHour = nowIST.getHours();
+  const currentISTDateStr = nowIST.toLocaleDateString('en-CA'); // YYYY-MM-DD format
+
+  const hourlyForecasts = [];
+  if (forecastData.hourly) {
+    const times = forecastData.hourly.time || [];
+    const temps = forecastData.hourly.temperature_2m || [];
+    const codes = forecastData.hourly.weather_code || [];
+
+    // Find index where the timestamp matches current IST date + hour
+    const currentHourPrefix = `${currentISTDateStr}T${String(currentISTHour).padStart(2, '0')}`;
+    let startIndex = times.findIndex(t => t.startsWith(currentHourPrefix));
+    if (startIndex === -1) startIndex = 0;
+
+    for (let i = startIndex; i < Math.min(startIndex + 5, times.length); i++) {
+      // Timestamps from API are already IST — extract HH:MM directly from the string
+      const timeStr = times[i]; // e.g. "2026-06-10T10:00"
+      const hourPart = timeStr.substring(11, 16); // "10:00"
+      hourlyForecasts.push({
+        time: hourPart,
+        tempC: temps[i],
+        conditionId: wmoToOwmCode(codes[i])
+      });
+    }
+  }
+
   const description = getWeatherDescription(owmCode);
 
   return {
     city: 'My Location',
     country: '',
+    state: '',
     lat,
     lon,
     tempC,
@@ -117,19 +177,34 @@ export async function fetchWeatherByCoords(lat, lon) {
     windSpeed,
     feelsLike,
     conditionId: owmCode,
-    description
+    description,
+    aqi: aqiData?.current?.us_aqi || null,
+    pm2_5: aqiData?.current?.pm2_5 || null,
+    pm10: aqiData?.current?.pm10 || null,
+    hourly: hourlyForecasts
   };
 }
 
-// Fetch exact place name using BigDataCloud reverse geocoding API
+// Fetch exact place name using Nominatim reverse geocoding API
 export async function fetchPlaceName(lat, lon) {
   try {
-    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
-    const res = await fetch(url);
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'AetheriaApp/1.0'
+      }
+    });
     if (!res.ok) return null;
     const data = await res.json();
-    return data.locality || data.city || data.principalSubdivision || null;
-  } catch {
+    return {
+      locality: data.address?.suburb || data.address?.neighbourhood || null,
+      city: data.address?.city || data.address?.town || data.address?.village || null,
+      state: data.address?.state || null,
+      country: data.address?.country || null,
+      countryCode: data.address?.country_code?.toUpperCase() || null
+    };
+  } catch (err) {
+    console.error('Reverse geocoding failed:', err);
     return null;
   }
 }
